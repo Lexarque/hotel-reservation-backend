@@ -88,22 +88,27 @@ class BookingOrderRepository implements BookingOrderRepositoryInterface
         $stayingPeriod = $checkinDate->diffInDays($checkoutDate);
 
         // Loop through each room ID
+        $bookingOrderDetails = [];
         foreach ($request->room_ids as $room_id) {
             $hotelRoom = HotelRoom::where('id', $room_id)->first();
             $currentDate = $checkinDate->copy();
             for ($i = 0; $i < $stayingPeriod; $i++) {
-                $bookingOrder->booking_order_details()->create([
+                array_push($bookingOrderDetails, [
                     'staying_period' => $stayingPeriod,
                     'price' => $hotelRoom->room_type->price,
                     'booking_order_id' => $bookingOrder->id,
                     'room_id' => $hotelRoom->id,
                     'access_date' => $currentDate->format('Y-m-d'),
                 ]);
+
                 // Increment the current date
                 $currentDate->addDay();
             }
         }
 
+        // Create the booking order details
+        $bookingOrder->booking_order_details()->createMany($bookingOrderDetails);
+        
         return Response()->json([
             'message' => 'Booking Order created successfully',
             'data' => $bookingOrder
