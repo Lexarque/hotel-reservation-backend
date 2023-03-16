@@ -69,7 +69,7 @@ class AuthRepository implements AuthRepositoryInterface
             'name' => $request->name,
             'email' => $request->email,
             'password' => bcrypt($request->password),
-            'role_id' => Role::where('name', 'customer')->first()->id
+            'role_id' => Role::where('name', 'verified-guest')->first()->id
         ]);
 
         return Response()->json([
