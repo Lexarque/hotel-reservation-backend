@@ -68,4 +68,14 @@ Route::middleware('jwt.verify')->group(function () {
             Route::delete('/{id}/delete', [BookingOrderController::class, 'destroy'])->name('booking.orders.destroy');
         });
     });
+
+    Route::prefix('users')->group(function () {
+        Route::middleware(['role.check:admin'])->group(function () {
+            Route::get('/', [UserController::class, 'index'])->name('users.index');
+            Route::get('/{id}', [UserController::class, 'show'])->name('users.show');
+            Route::put('/{id}/update', [UserController::class, 'update'])->name('users.update');
+            Route::delete('/{id}/delete', [UserController::class, 'destroy'])->name('users.destroy');
+        });
+    });
+    
 });
