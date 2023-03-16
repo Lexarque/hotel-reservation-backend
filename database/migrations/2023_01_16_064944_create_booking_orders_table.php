@@ -15,6 +15,7 @@ return new class extends Migration
     {
         Schema::create('booking_orders', function (Blueprint $table) {
             $table->id();
+            $table->string('order_number', 20)->unique();
             $table->date('checkin_date');
             $table->date('checkout_date');
             $table->integer('room_count');

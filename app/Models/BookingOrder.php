@@ -23,6 +23,7 @@ class BookingOrder extends Model
      * @var array<int, string>
      */
     protected $fillable = [
+        'order_number',
         'room_count',
         'user_id',
         'room_type_id',

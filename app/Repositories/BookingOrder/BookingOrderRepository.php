@@ -10,7 +10,6 @@ use App\Repositories\HotelRoom\HotelRoomRepositoryInterface;
 use App\Http\Requests\BookingOrder\BookingOrderCreateRequest;
 use App\Http\Requests\BookingOrder\BookingOrderUpdateRequest;
 use App\Repositories\BookingOrder\BookingOrderRepositoryInterface;
-use Termwind\Components\Dd;
 
 class BookingOrderRepository implements BookingOrderRepositoryInterface
 {
@@ -24,14 +23,24 @@ class BookingOrderRepository implements BookingOrderRepositoryInterface
     public function index(Request $request)
     {
         $data = BookingOrder::when($request->search, function ($query, $search) {
-            return $query->where('room_number', 'like', "%{$search}%");
+            return $query->where('order_number', 'like', "%{$search}%")
+                ->orWhereHas('user', function ($subquery) use ($search) {
+                    return $subquery->where('name', 'like', "%{$search}%");
+                });
         })
             ->when($request->checkin_date || $request->checkout_date, function ($query) use ($request) {
                 return $query->where(function ($subquery) use ($request) {
                     return $subquery->whereBetween('checkin_date', [$request->checkin_date ?? now(), $request->checkout_date ?? now()])
                         ->whereBetween('checkout_date', [$request->checkin_date ?? now(), $request->checkout_date ?? now()]);
                 });
-            })->get();
+            })
+            ->when($request->checkin_date || $request->checkout_date, function ($query) use ($request) {
+                return $query->where(function ($subquery) use ($request) {
+                    return $subquery->whereBetween('checkin_date', [$request->checkin_date ?? now(), $request->checkout_date ?? now()])
+                        ->whereBetween('checkout_date', [$request->checkin_date ?? now(), $request->checkout_date ?? now()]);
+                });
+            })
+            ->get();
 
         return Response()->json(['data' => $data]);
     }
@@ -52,9 +61,19 @@ class BookingOrderRepository implements BookingOrderRepositoryInterface
 
     public function store(BookingOrderCreateRequest $request)
     {
+        $user = auth()->guard('api')->user();
+
+        if ($user->role->name != 'verified-guest') {
+            $request->validate([
+                'user_id' => 'required|exists:users,id'
+            ]);
+        }
+
         $request->merge([
             'room_count' => count($request->room_ids),
-            'user_id' => auth()->guard('api')->user()->id
+            'user_id' => isset($request->user_id) ? $request->user_id : $user->id,
+            'order_number' => 'ORD-' . substr(str_shuffle(str_repeat($x='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', ceil(5/strlen($x)) )),1,7)
+
         ]);
 
         if ($request->checkin_date > $request->checkout_date) {
@@ -191,7 +210,7 @@ class BookingOrderRepository implements BookingOrderRepositoryInterface
             }
         }
 
-        $bookingOrder->update($request->all());
+        $bookingOrder->update($request->except('order_number'));
         $bookingOrder->refresh();
 
         return Response()->json([
