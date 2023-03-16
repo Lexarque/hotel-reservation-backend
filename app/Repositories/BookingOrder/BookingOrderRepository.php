@@ -71,11 +71,11 @@ class BookingOrderRepository implements BookingOrderRepositoryInterface
         if (!isset($vacantRooms['data'])) {
             return $vacantRooms;
         }
-        
+
         // Check if the room IDs are already booked
         foreach ($request->room_ids as $room_id) {
             if (!in_array((int)$room_id, array_column($vacantRooms['data'], 'id'))) {
-                return response()->json(['message' => 'Room number ' . $room_id . ' has already been booked'], 422);
+                return response()->json(['message' => 'Room number ' . HotelRoom::where('id', $room_id)->first()->room_number . ' has already been booked'], 422);
             }
         }
 
@@ -108,7 +108,7 @@ class BookingOrderRepository implements BookingOrderRepositoryInterface
 
         // Create the booking order details
         $bookingOrder->booking_order_details()->createMany($bookingOrderDetails);
-        
+
         return Response()->json([
             'message' => 'Booking Order created successfully',
             'data' => $bookingOrder
@@ -150,14 +150,15 @@ class BookingOrderRepository implements BookingOrderRepositoryInterface
             } else {
                 // Call vacant room method from the hotel room repository
                 $vacantRooms = $this->hotelRoomRepository->vacantRoom($request);
+                $vacantRooms = json_decode($vacantRooms->getContent(), true);
                 if (!isset($vacantRooms['data'])) {
                     return $vacantRooms;
                 }
 
                 // Check if the room IDs are already booked
                 foreach ($request->room_ids as $room_id) {
-                    if (in_array($room_id, $vacantRooms['data'])) {
-                        return Response()->json(['message' => 'Room ID ' . $room_id . ' is already booked'], 422);
+                    if (!in_array((int)$room_id, array_column($vacantRooms['data'], 'id'))) {
+                        return response()->json(['message' => 'Room number ' . HotelRoom::where('id', $room_id)->first()->room_number . ' has already been booked'], 422);
                     }
                 }
             }
@@ -205,6 +206,7 @@ class BookingOrderRepository implements BookingOrderRepositoryInterface
             return Response()->json(['message' => 'Booking Order not found'], 404);
         }
 
+        $bookingOrder->booking_order_details()->delete();
         $bookingOrder->delete();
 
         return Response()->json([
